@@ -24,7 +24,7 @@ class ResetCollector(DecorrelatingStartCollector):
             env_buf.observation[t] = step.observation
             act_waiter.acquire()  # Need sampled actions from server.
             for b, env in enumerate(self.envs):
-                o, r, d, env_info = env.step(step.action[b])
+                o, r, d, env_info = env.step(step.action[b], agent_info=step.agent_info, info_idx=b)
                 traj_infos[b].step(step.observation[b], step.action[b], r, d,
                     step.agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):
@@ -82,7 +82,7 @@ class WaitResetCollector(DecorrelatingStartCollector):
                         step.agent_info[b] = 0
                     # Leave step.done[b] = True, record that.
                     continue
-                o, r, d, env_info = env.step(step.action[b])
+                o, r, d, env_info = env.step(step.action[b], agent_info=step.agent_info, info_idx=b)
                 traj_infos[b].step(step.observation[b], step.action[b], r, d,
                     step.agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):
@@ -136,7 +136,7 @@ class EvalCollector(BaseEvalCollector):
                 step_blocker.release()  # Always release at end of loop.
                 break
             for b, env in enumerate(self.envs):
-                o, r, d, env_info = env.step(step.action[b])
+                o, r, d, env_info = env.step(step.action[b], agent_info=step.agent_info, info_idx=b)
                 traj_infos[b].step(step.observation[b], step.action[b], r, d,
                     step.agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):

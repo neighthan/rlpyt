@@ -1,28 +1,33 @@
-
+from typing import Any, Dict, Optional
 
 from rlpyt.samplers.collections import BatchSpec, TrajInfo
 from rlpyt.utils.quick_args import save__init__args
 
 
-class BaseSampler(object):
+class BaseSampler:
     """Class which interfaces with the Runner, in master process only."""
 
     def __init__(
             self,
             EnvCls,
-            env_kwargs,
-            batch_T,
-            batch_B,
-            max_decorrelation_steps=100,
+            env_kwargs: Dict[str, Any],
+            batch_T: int,
+            batch_B: int,
+            max_decorrelation_steps: int=100,
             TrajInfoCls=TrajInfo,
             CollectorCls=None,  # Not auto-populated.
-            eval_n_envs=0,  # 0 for no eval setup.
+            eval_n_envs: int=0,
             eval_CollectorCls=None,  # Maybe auto-populated.
-            eval_env_kwargs=None,  # Must supply if doing eval.
-            eval_max_steps=None,  # int if using evaluation.
-            eval_max_trajectories=None,  # Optional earlier cutoff.
-            eval_min_envs_reset=1,
+            eval_env_kwargs : Optional[Dict[str, Any]] = None,
+            eval_max_steps: Optional[int] = None,
+            eval_max_trajectories: Optional[int] = None,  # Optional earlier cutoff.
+            eval_min_envs_reset: int = 1,
             ):
+        """
+        :param eval_n_envs: 0 for no eval setup.
+        :param eval_env_kwargs: must supply if doing eval.
+        :param eval_max_steps: int if using evaluation.
+        """
         eval_max_steps = None if eval_max_steps is None else int(eval_max_steps)
         eval_max_trajectories = (None if eval_max_trajectories is None else
             int(eval_max_trajectories))
@@ -33,17 +38,17 @@ class BaseSampler(object):
     def initialize(self, *args, **kwargs):
         raise NotImplementedError
 
-    def obtain_samples(self, itr):
-        raise NotImplementedError  # type: Samples
+    def obtain_samples(self, itr: int):
+        raise NotImplementedError
 
-    def evaluate_agent(self, itr):
+    def evaluate_agent(self, itr: int):
         raise NotImplementedError
 
     def shutdown(self):
         pass
 
 
-class BaseCollector(object):
+class BaseCollector:
     """Class that steps through environments, possibly in worker process."""
 
     def __init__(
@@ -76,7 +81,7 @@ class BaseCollector(object):
         pass
 
 
-class BaseEvalCollector(object):
+class BaseEvalCollector:
     """Does not record intermediate data."""
 
     def __init__(

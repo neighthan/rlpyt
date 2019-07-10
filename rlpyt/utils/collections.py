@@ -152,7 +152,7 @@ class AttrDict(dict):
     for both read and write.
     e.g. x["key"] and x.key are the same,
     e.g. can iterate using:  for k, v in x.items().
-    Can sublcass for specific data classes; must call AttrDict's __init__().
+    Can subclass for specific data classes; must call AttrDict's __init__().
     """
 
     def __init__(self, *args, **kwargs):

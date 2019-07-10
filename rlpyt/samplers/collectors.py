@@ -1,4 +1,4 @@
-
+from typing import Optional
 import numpy as np
 
 from rlpyt.samplers.base import BaseCollector
@@ -10,7 +10,7 @@ from rlpyt.utils.quick_args import save__init__args
 
 class DecorrelatingStartCollector(BaseCollector):
 
-    def start_envs(self, max_decorrelation_steps=0):
+    def start_envs(self, max_decorrelation_steps: int=0) -> AgentInputs:
         """Calls reset() on every env and returns agent_inputs buffer."""
         traj_infos = [self.TrajInfoCls() for _ in range(len(self.envs))]
         observations = list()
@@ -30,8 +30,9 @@ class DecorrelatingStartCollector(BaseCollector):
             n_steps = 1 + int(np.random.rand() * max_decorrelation_steps)
             env_actions = env.action_space.sample(n_steps)
             for a in env_actions:
-                o, r, d, info = env.step(a)
-                traj_infos[b].step(o, a, r, d, None, info)
+                a = np.array(a)
+                o, r, d, info = env.step(a, ignore_safe_act_method=True)
+                traj_infos[b].step(o, a.flat[0], r, d, None, info)
                 if getattr(info, "traj_done", d):
                     o = env.reset()
                     traj_infos[b] = self.TrajInfoCls()
@@ -44,7 +45,7 @@ class DecorrelatingStartCollector(BaseCollector):
         return AgentInputs(observation, prev_action, prev_reward), traj_infos
 
 
-class SerialEvalCollector(object):
+class SerialEvalCollector:
     """Does not record intermediate data."""
 
     def __init__(
@@ -52,12 +53,12 @@ class SerialEvalCollector(object):
             envs,
             agent,
             TrajInfoCls,
-            max_T,
-            max_trajectories=None,
+            max_T: int,
+            max_trajectories: Optional[int] = None,
             ):
         save__init__args(locals())
 
-    def collect_evaluation(self, itr):
+    def collect_evaluation(self, itr: int) -> list:
         traj_infos = [self.TrajInfoCls() for _ in range(len(self.envs))]
         completed_traj_infos = list()
         observations = list()
@@ -73,7 +74,7 @@ class SerialEvalCollector(object):
             act_pyt, agent_info = self.agent.step(obs_pyt, act_pyt, rew_pyt)
             action = numpify_buffer(act_pyt)
             for b, env in enumerate(self.envs):
-                o, r, d, env_info = env.step(action[b])
+                o, r, d, env_info = env.step(action[b], agent_info, info_idx=b)
                 traj_infos[b].step(observation[b], action[b], r, d,
                     agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):

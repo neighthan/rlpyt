@@ -29,7 +29,7 @@ class ResetCollector(DecorrelatingStartCollector):
             action = numpify_buffer(act_pyt)
             for b, env in enumerate(self.envs):
                 # Environment inputs and outputs are numpy arrays.
-                o, r, d, env_info = env.step(action[b])
+                o, r, d, env_info = env.step(action[b], agent_info=agent_info, info_idx=b)
                 traj_infos[b].step(observation[b], action[b], r, d, agent_info[b],
                     env_info)
                 if getattr(env_info, "traj_done", d):
@@ -93,7 +93,7 @@ class WaitResetCollector(DecorrelatingStartCollector):
                     # Leave self.done[b] = True, record that.
                     continue
                 # Environment inputs and outputs are numpy arrays.
-                o, r, d, env_info = env.step(action[b])
+                o, r, d, env_info = env.step(action[b], agent_info=agent_info, info_idx=b)
                 traj_infos[b].step(observation[b], action[b], r, d, agent_info[b],
                     env_info)
                 if getattr(env_info, "traj_done", d):
@@ -146,7 +146,7 @@ class EvalCollector(BaseEvalCollector):
             act_pyt, agent_info = self.agent.step(obs_pyt, act_pyt, rew_pyt)
             action = numpify_buffer(act_pyt)
             for b, env in enumerate(self.envs):
-                o, r, d, env_info = env.step(action[b])
+                o, r, d, env_info = env.step(action[b], agent_info=agent_info, info_idx=b)
                 traj_infos[b].step(observation[b], action[b], r, d,
                     agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):

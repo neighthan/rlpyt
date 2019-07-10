@@ -94,7 +94,7 @@ def get_example_outputs(agent, env, examples):
     MKL)."""
     o = env.reset()
     a = env.action_space.sample()
-    o, r, d, env_info = env.step(a)
+    o, r, d, env_info = env.step(a, ignore_safe_act_method=True)
     r = np.asarray(r, dtype="float32")  # Must match torch float dtype here.
     agent.reset()
     agent_inputs = torchify_buffer(AgentInputs(o, a, r))
