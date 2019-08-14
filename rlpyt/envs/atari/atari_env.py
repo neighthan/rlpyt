@@ -1,4 +1,3 @@
-
 import numpy as np
 import os
 import atari_py
@@ -16,12 +15,11 @@ W, H = (80, 104)  # Crop two rows, then downsample by 2x (fast, clean image).
 
 EnvInfo = namedtuple(
     "EnvInfo",
-    ["game_score", "traj_done", "action_safe", "unsafe_penalty", "reached_level2"]
+    ["game_score", "traj_done", "action_safe", "unsafe_penalty", "reached_level2"],
 )
 
 
 class AtariTrajInfo(TrajInfo):
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.game_score = 0
@@ -40,7 +38,6 @@ class AtariTrajInfo(TrajInfo):
 
 
 class AtariEnv(Env):
-
     def __init__(
         self,
         game: str = "pong",
@@ -146,7 +143,7 @@ class AtariEnv(Env):
     ###########################################################################
     # Helpers
 
-    def _get_screen(self, frame=1):
+    def _get_screen(self, frame: int = 1) -> np.ndarray:
         frame = self._raw_frame_1 if frame == 1 else self._raw_frame_2
         self.ale.getScreenGrayscale(frame)
 
