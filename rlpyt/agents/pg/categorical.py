@@ -9,7 +9,7 @@ from rlpyt.utils.buffer import buffer_to, buffer_func, buffer_method
 
 class CategoricalPgAgent(BasePgAgent):
 
-    def __call__(self, observation, prev_action, prev_reward):
+    def __call__(self, observation, prev_action, prev_reward, rgb=None):
         prev_action = self.distribution.to_onehot(prev_action)
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
@@ -25,25 +25,24 @@ class CategoricalPgAgent(BasePgAgent):
         self.distribution = Categorical(dim=env_spaces.action.n)
 
     @torch.no_grad()
-    def step(self, observation, prev_action, prev_reward):
+    def step(self, observation, prev_action, prev_reward, rgb=None):
         prev_action = self.distribution.to_onehot(prev_action)
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
         pi, value = self.model(*model_inputs)
-        # TODO - should I actually renormalize pi or just sample `action` from a
-        # renormalized version and leave pi as-is?
-        pi = self.renormalize_safely(observation, pi)
+        pi = self.renormalize_safely(rgb, pi)
         dist_info = DistInfo(prob=pi)
         action = self.distribution.sample(dist_info)
         agent_info = AgentInfo(dist_info=dist_info, value=value)
         action, agent_info = buffer_to((action, agent_info), device="cpu")
         return AgentStep(action=action, agent_info=agent_info)
 
-    def renormalize_safely(self, observation, pi):
-        if self.checker is None or observation.ndimension() != 4:
+    def renormalize_safely(self, rgb, pi):
+        # if rgb is None or self.checker is None or rgb.ndimension() != 4:
+        if rgb.ndimension() != 4:
             return pi
 
-        safe_action_masks = self.checker.get_safe_actions(observation).to(pi.device)
+        safe_action_masks = self.checker.get_safe_actions(rgb).to(pi.device)
         # pi[~safe_action_masks] = 0
         pi = pi * safe_action_masks.float()
         pi = pi / pi.sum(-1, keepdim=True)

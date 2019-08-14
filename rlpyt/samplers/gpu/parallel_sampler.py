@@ -135,7 +135,7 @@ class GpuParallelSampler(BaseSampler):
         step_np, step_pyt = self.step_buffer_np, self.step_buffer_pyt
 
         agent_inputs = AgentInputs(step_pyt.observation, step_pyt.action,
-            step_pyt.reward)  # Fixed buffer objects.
+            step_pyt.reward, step_pyt.rgb)  # Fixed buffer objects.
 
         for t in range(self.batch_spec.T):
             for b in step_blockers:
@@ -155,7 +155,8 @@ class GpuParallelSampler(BaseSampler):
             b.acquire()
         if "bootstrap_value" in self.samples_np.agent:
             self.samples_np.agent.bootstrap_value[:] = self.agent.value(
-                *agent_inputs)
+                agent_inputs.observation, agent_inputs.prev_action, agent_inputs.prev_reward
+            )
         if np.any(step_np.done):  # Reset at end of batch; ready for next.
             for b_reset in np.where(step_np.done)[0]:
                 step_np.action[b_reset] = 0  # Null prev_action into agent.
@@ -169,7 +170,7 @@ class GpuParallelSampler(BaseSampler):
         traj_infos = list()
         self.agent.reset()
         agent_inputs = AgentInputs(step_pyt.observation, step_pyt.action,
-            step_pyt.reward)  # Fixed buffer objects.
+            step_pyt.reward, step_pyt.rgb)  # Fixed buffer objects.
 
         for t in range(self.eval_max_T):
             if t % EVAL_TRAJ_CHECK == 0:  # (While workers stepping.)

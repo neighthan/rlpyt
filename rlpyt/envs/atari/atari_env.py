@@ -71,6 +71,7 @@ class AtariEnv(Env):
             low=0, high=255, shape=obs_shape, dtype="uint8"
         )
         self._max_frame = self.ale.getScreenGrayscale()
+        self._rgb_frame = self.ale.getScreenRGB2()
         self._raw_frame_1 = self._max_frame.copy()
         self._raw_frame_2 = self._max_frame.copy()
         self._obs = np.zeros(shape=obs_shape, dtype="uint8")
@@ -81,7 +82,7 @@ class AtariEnv(Env):
         self._horizon = int(horizon)
         self.reset()
 
-    def reset(self, hard=False):
+    def reset(self, hard: bool=False, rgb: bool=False):
         self.ale.reset_game()
         self._reset_obs()
         self._life_reset()
@@ -89,9 +90,20 @@ class AtariEnv(Env):
             self.ale.act(0)
         self._update_obs()  # (don't bother to populate any frame history)
         self._step_counter = 0
-        return self.get_obs()
+        obs = self.get_obs()
+        if rgb:
+            self.ale.getScreenRGB2(self._rgb_frame)
+            return obs, self._rgb_frame
+        return obs
 
-    def step(self, action, agent_info=None, info_idx=None, ignore_safe_act_method=None):
+    def step(
+        self,
+        action,
+        agent_info=None,
+        info_idx=None,
+        ignore_safe_act_method=None,
+        rgb: bool = False,
+    ) -> EnvStep:
         a = self._action_set[action]
         game_score = np.array(0.0, dtype="float32")
         for _ in range(self._frame_skip - 1):
@@ -120,7 +132,11 @@ class AtariEnv(Env):
             reached_level2=level2,
         )
         self._step_counter += 1
-        return EnvStep(self.get_obs(), reward, done, info)
+        env_step = EnvStep(self.get_obs(), reward, done, info)
+        if rgb:
+            self.ale.getScreenRGB2(self._rgb_frame)
+            return env_step, self._rgb_frame
+        return env_step
 
     def render(self, wait: int = 10, show_full_obs: bool = False) -> None:
         """

@@ -82,7 +82,8 @@ class WaitResetCollector(DecorrelatingStartCollector):
                         step.agent_info[b] = 0
                     # Leave step.done[b] = True, record that.
                     continue
-                o, r, d, env_info = env.step(step.action[b], agent_info=step.agent_info, info_idx=b)
+                # TODO - only want RGB if safe = True
+                (o, r, d, env_info), rgb = env.step(step.action[b], agent_info=step.agent_info, info_idx=b, rgb=True)
                 traj_infos[b].step(step.observation[b], step.action[b], r, d,
                     step.agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):
@@ -95,6 +96,8 @@ class WaitResetCollector(DecorrelatingStartCollector):
                 step.observation[b] = o
                 step.reward[b] = r
                 step.done[b] = d
+                if True:
+                    step.rgb[b] = rgb
                 if env_info:
                     env_buf.env_info[t, b] = env_info
             agent_buf.action[t] = step.action  # OPTIONAL BY SERVER

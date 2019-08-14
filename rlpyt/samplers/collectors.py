@@ -14,24 +14,29 @@ class DecorrelatingStartCollector(BaseCollector):
         """Calls reset() on every env and returns agent_inputs buffer."""
         traj_infos = [self.TrajInfoCls() for _ in range(len(self.envs))]
         observations = list()
+        rgbs = list()
         for env in self.envs:
-            observations.append(env.reset())
+            obs, rgb = env.reset(rgb=True)
+            observations.append(obs)
+            rgbs.append(rgb)
         observation = buffer_from_example(observations[0], len(self.envs))
+        rgb = buffer_from_example(rgbs[0], len(self.envs))
         for b, obs in enumerate(observations):
             observation[b] = obs  # numpy array or namedarraytuple
+            rgb[b] = rgbs[b]
         prev_action = self.envs[0].action_space.sample(len(self.envs), null=True)
         prev_reward = np.zeros(len(self.envs), dtype="float32")
         if self.rank == 0:
             logger.log("Sampler decorrelating envs, max steps: "
                 f"{max_decorrelation_steps}")
         if max_decorrelation_steps == 0:
-            return AgentInputs(observation, prev_action, prev_reward), traj_infos
+            return AgentInputs(observation, prev_action, prev_reward, rgb), traj_infos
         for b, env in enumerate(self.envs):
             n_steps = 1 + int(np.random.rand() * max_decorrelation_steps)
             env_actions = env.action_space.sample(n_steps)
             for a in env_actions:
                 a = np.array(a)
-                o, r, d, info = env.step(a, ignore_safe_act_method=True)
+                (o, r, d, info), rgb_ = env.step(a, ignore_safe_act_method=True, rgb=True)
                 traj_infos[b].step(o, a.flat[0], r, d, None, info)
                 if getattr(info, "traj_done", d):
                     o = env.reset()
@@ -42,7 +47,8 @@ class DecorrelatingStartCollector(BaseCollector):
             observation[b] = o
             prev_action[b] = a
             prev_reward[b] = r
-        return AgentInputs(observation, prev_action, prev_reward), traj_infos
+            rgb[b] = rgb_
+        return AgentInputs(observation, prev_action, prev_reward, rgb), traj_infos
 
 
 class SerialEvalCollector:

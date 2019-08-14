@@ -40,6 +40,7 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
         agent_buffer = AgentSamplesBsv(*agent_buffer, bootstrap_value=bv)
 
     observation = buffer_from_example(examples["observation"], (T, B), env_shared)
+    rgb = buffer_from_example(examples["rgb"], (T, B), env_shared)
     all_reward = buffer_from_example(examples["reward"], (T + 1, B), env_shared)
     reward = all_reward[1:]
     prev_reward = all_reward[:-1]  # Writing to reward will populate prev_reward.
@@ -51,6 +52,7 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
         prev_reward=prev_reward,
         done=done,
         env_info=env_info,
+        rgb=rgb,
     )
     samples_np = Samples(agent=agent_buffer, env=env_buffer)
     samples_pyt = torchify_buffer(samples_np)
@@ -59,9 +61,9 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
 
 def build_step_buffer(examples, B):
     bufs = tuple(buffer_from_example(examples[k], B, shared_memory=True)
-        for k in ["observation", "action", "reward", "done", "agent_info"])
+        for k in ["observation", "action", "reward", "done", "agent_info", "rgb"])
     need_reset = buffer_from_example(examples["done"], B, shared_memory=True)
-    step_buffer_np = StepBuffer(*bufs, need_reset)
+    step_buffer_np = StepBuffer(*bufs[:-1], need_reset, bufs[-1])
     step_buffer_pyt = torchify_buffer(step_buffer_np)
     return step_buffer_pyt, step_buffer_np
 
@@ -94,10 +96,10 @@ def get_example_outputs(agent, env, examples):
     MKL)."""
     o = env.reset()
     a = env.action_space.sample()
-    o, r, d, env_info = env.step(a, ignore_safe_act_method=True)
+    (o, r, d, env_info), rgb = env.step(a, ignore_safe_act_method=True, rgb=True)
     r = np.asarray(r, dtype="float32")  # Must match torch float dtype here.
     agent.reset()
-    agent_inputs = torchify_buffer(AgentInputs(o, a, r))
+    agent_inputs = torchify_buffer(AgentInputs(o, a, r, rgb))
     a, agent_info = agent.step(*agent_inputs)
     if "prev_rnn_state" in agent_info:
         # Agent leaves B dimension in, strip it: [B,N,H] --> [N,H]
@@ -108,3 +110,4 @@ def get_example_outputs(agent, env, examples):
     examples["env_info"] = env_info
     examples["action"] = a  # OK to put torch tensor here, could numpify.
     examples["agent_info"] = agent_info
+    examples["rgb"] = rgb

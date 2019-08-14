@@ -5,7 +5,7 @@ from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.synchronize import RWLock
 
 AgentInputs = namedarraytuple("AgentInputs",
-    ["observation", "prev_action", "prev_reward"])
+    ["observation", "prev_action", "prev_reward", "rgb"])
 AgentStep = namedarraytuple("AgentStep", ["action", "agent_info"])
 
 

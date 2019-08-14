@@ -51,6 +51,7 @@ class PPO(PolicyGradientAlgo):
             observation=samples.env.observation,
             prev_action=samples.agent.prev_action,
             prev_reward=samples.env.prev_reward,
+            rgb=samples.env.rgb,
         )
         agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
         return_, advantage, valid = self.process_returns(samples)
