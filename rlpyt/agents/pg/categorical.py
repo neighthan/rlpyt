@@ -46,7 +46,7 @@ class CategoricalPgAgent(BasePgAgent):
         safe_action_masks = self.checker.get_safe_actions(observation).to(pi.device)
         # pi[~safe_action_masks] = 0
         pi = pi * safe_action_masks.float()
-        pi = pi / pi.sum(-1)
+        pi = pi / pi.sum(-1, keepdim=True)
         return pi
 
         # TODO - instead of a penalty applied to the reward, you could directly
