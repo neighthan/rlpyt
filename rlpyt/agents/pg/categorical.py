@@ -14,7 +14,8 @@ class CategoricalPgAgent(BasePgAgent):
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
         pi, value = self.model(*model_inputs)
-        # pi = self.renormalize_safely(observation, pi)
+        # if self.checker:
+        #     pi = self.renormalize_safely(observation, pi)
         # TODO - should we zero-out unsafe actions here? This approach of calling
         # is used for training the model, I think, so if we change the distribution,
         # it will affect the loss and the training...
@@ -30,7 +31,10 @@ class CategoricalPgAgent(BasePgAgent):
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
         pi, value = self.model(*model_inputs)
-        pi = self.renormalize_safely(rgb, pi)
+        # TODO - should I actually renormalize pi or just sample `action` from a
+        # renormalized version and leave pi as-is?
+        if self.checker:
+            pi = self.renormalize_safely(rgb, pi)
         dist_info = DistInfo(prob=pi)
         action = self.distribution.sample(dist_info)
         agent_info = AgentInfo(dist_info=dist_info, value=value)
@@ -38,24 +42,15 @@ class CategoricalPgAgent(BasePgAgent):
         return AgentStep(action=action, agent_info=agent_info)
 
     def renormalize_safely(self, rgb, pi):
-        # if rgb is None or self.checker is None or rgb.ndimension() != 4:
+        # if rgb is None:
         if rgb.ndimension() != 4:
-            return pi
+            rgb = rgb.unsqueeze(0)
 
         safe_action_masks = self.checker.get_safe_actions(rgb).to(pi.device)
         # pi[~safe_action_masks] = 0
         pi = pi * safe_action_masks.float()
         pi = pi / pi.sum(-1, keepdim=True)
         return pi
-
-        # TODO - instead of a penalty applied to the reward, you could directly
-        # add a term to the loss that penalizes having higher probabilities for
-        # unsafe actions. This might be easier to learn than just a reward term
-        # which is difficult to associate with the right thing?
-        # (for Q networks, you could penalize having higher Q values for unsafe
-        # actions, but it's harder there because there isn't a target Q value
-        # that you want it to give to unsafe actions (the target probability is 0,
-        # but Q values can be negative...))
 
     @torch.no_grad()
     def value(self, observation, prev_action, prev_reward):
