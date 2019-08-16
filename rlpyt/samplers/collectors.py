@@ -1,5 +1,6 @@
 from typing import Optional
 import numpy as np
+import torch
 
 from rlpyt.samplers.base import BaseCollector
 from rlpyt.agents.base import AgentInputs
@@ -10,8 +11,11 @@ from rlpyt.utils.quick_args import save__init__args
 
 class DecorrelatingStartCollector(BaseCollector):
 
-    def start_envs(self, max_decorrelation_steps: int=0) -> AgentInputs:
+    def start_envs(self, max_decorrelation_steps: int=0, checker=None) -> AgentInputs:
         """Calls reset() on every env and returns agent_inputs buffer."""
+        if not checker:
+            # can't safely do random steps to decorrelate
+            max_decorrelation_steps = 0
         traj_infos = [self.TrajInfoCls() for _ in range(len(self.envs))]
         observations = list()
         for env in self.envs:
@@ -29,7 +33,11 @@ class DecorrelatingStartCollector(BaseCollector):
         for b, env in enumerate(self.envs):
             n_steps = 1 + int(np.random.rand() * max_decorrelation_steps)
             env_actions = env.action_space.sample(n_steps)
+            o = observations[b]
             for a in env_actions:
+                safe_actions = checker.get_safe_actions(torch.tensor(o)[None]).squeeze()
+                while not safe_actions[a]:
+                    a = env.action_space.sample(1)
                 a = np.array(a)
                 o, r, d, info = env.step(a, ignore_safe_act_method=True)
                 traj_infos[b].step(o, a.flat[0], r, d, None, info)

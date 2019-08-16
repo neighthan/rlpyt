@@ -42,7 +42,7 @@ class SerialSampler(BaseSampler):
             )
 
         agent_inputs, traj_infos = collector.start_envs(
-            self.max_decorrelation_steps)
+            self.max_decorrelation_steps, agent.checker)
         collector.start_agent()
 
         self.agent = agent
