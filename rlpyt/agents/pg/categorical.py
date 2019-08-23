@@ -34,23 +34,31 @@ class CategoricalPgAgent(BasePgAgent):
         # TODO - should I actually renormalize pi or just sample `action` from a
         # renormalized version and leave pi as-is?
         if self.checker:
-            pi = self.renormalize_safely(rgb, pi)
+            pi, constraint_used = self.renormalize_safely(rgb, pi)
+        else:
+            constraint_used = torch.zeros_like(value, dtype=torch.bool)
         dist_info = DistInfo(prob=pi)
         action = self.distribution.sample(dist_info)
-        agent_info = AgentInfo(dist_info=dist_info, value=value)
+        agent_info = AgentInfo(dist_info=dist_info, value=value, constraint_used=constraint_used)
         action, agent_info = buffer_to((action, agent_info), device="cpu")
         return AgentStep(action=action, agent_info=agent_info)
 
     def renormalize_safely(self, rgb, pi):
         # if rgb is None:
+        squeeze_pi = False
         if rgb.ndimension() != 4:
+            squeeze_pi = True
             rgb = rgb.unsqueeze(0)
 
         safe_action_masks = self.checker.get_safe_actions(rgb).to(pi.device)
         # pi[~safe_action_masks] = 0
         pi = pi * safe_action_masks.float()
-        pi = pi / pi.sum(-1, keepdim=True)
-        return pi
+        pi_sum = pi.sum(-1, keepdim=True)
+        constraint_used = 1 - pi_sum.squeeze()
+        pi = pi / pi_sum
+        if squeeze_pi:
+            pi = pi.squeeze(0)
+        return pi, constraint_used
 
     @torch.no_grad()
     def value(self, observation, prev_action, prev_reward):

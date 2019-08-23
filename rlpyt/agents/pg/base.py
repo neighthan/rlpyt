@@ -5,7 +5,7 @@ from rlpyt.utils.collections import namedarraytuple
 from rlpyt.agents.base import BaseAgent
 from rlpyt.utils.logging import logger
 
-AgentInfo = namedarraytuple("AgentInfo", ["dist_info", "value"])
+AgentInfo = namedarraytuple("AgentInfo", ["dist_info", "value", "constraint_used"])
 AgentInfoRnn = namedarraytuple("AgentInfoRnn",
     ["dist_info", "value", "prev_rnn_state"])
 
