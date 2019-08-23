@@ -36,7 +36,7 @@ class CategoricalPgAgent(BasePgAgent):
         if self.checker:
             pi, constraint_used = self.renormalize_safely(rgb, pi)
         else:
-            constraint_used = torch.zeros_like(value, dtype=torch.bool)
+            constraint_used = torch.zeros_like(value)
         dist_info = DistInfo(prob=pi)
         action = self.distribution.sample(dist_info)
         agent_info = AgentInfo(dist_info=dist_info, value=value, constraint_used=constraint_used)
