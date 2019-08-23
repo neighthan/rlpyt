@@ -26,6 +26,7 @@ class AtariTrajInfo(TrajInfo):
         self.reward_no_penalization = 0
         self.n_unsafe_actions = 0
         self.n_times_reached_level2 = 0
+        self.constraint_used = 0
 
     def step(self, observation, action, reward, done, agent_info, env_info):
         super().step(observation, action, reward, done, agent_info, env_info)
@@ -35,6 +36,7 @@ class AtariTrajInfo(TrajInfo):
             self.n_unsafe_actions += 1
         if env_info.reached_level2:
             self.n_times_reached_level2 += 1
+        self.constraint_used += agent_info.constraint_used
 
 
 class AtariEnv(Env):
