@@ -15,7 +15,7 @@ W, H = (80, 104)  # Crop two rows, then downsample by 2x (fast, clean image).
 
 EnvInfo = namedtuple(
     "EnvInfo",
-    ["game_score", "traj_done", "action_safe", "unsafe_penalty", "reached_level2", "constraint_used"],
+    ["game_score", "traj_done", "action_safe", "unsafe_penalty", "reached_level2"],
 )
 
 
@@ -36,7 +36,8 @@ class AtariTrajInfo(TrajInfo):
             self.n_unsafe_actions += 1
         if env_info.reached_level2:
             self.n_times_reached_level2 += 1
-        self.constraint_used += env_info.constraint_used
+        # TODO - is agent_info sometimes None?
+        self.constraint_used += agent_info.constraint_used
 
 
 class AtariEnv(Env):
@@ -125,16 +126,12 @@ class AtariEnv(Env):
                 reward = np.sign(unsafe_penalty)
             else:
                 reward += unsafe_penalty
-        # !TODO - when don't we get agent info? Do we need to check
-        # for constraint usage then too?
-        constraint_used = agent_info.constraint_used[info_idx] if agent_info else 0
         info = EnvInfo(
             game_score=game_score,
             traj_done=done,  # only playing with 1 life
             action_safe=not lost_life,
             unsafe_penalty=unsafe_penalty,
             reached_level2=level2,
-            constraint_used=constraint_used,
         )
         self._step_counter += 1
         env_step = EnvStep(self.get_obs(), reward, done, info)
