@@ -40,7 +40,7 @@ class DecorrelatingStartCollector(BaseCollector):
             env_actions = env.action_space.sample(n_steps)
             o = observations[b]
             for a in env_actions:
-                safe_actions = checker.get_safe_actions(torch.tensor(o)[None]).squeeze()
+                safe_actions = checker.get_safe_actions(torch.tensor(rgb[b])[None]).squeeze()
                 while not safe_actions[a]:
                     a = env.action_space.sample(1)
                 a = np.array(a)
@@ -77,15 +77,17 @@ class SerialEvalCollector:
         completed_traj_infos = list()
         observations = list()
         for env in self.envs:
-            observations.append(env.reset())
+            obs, rgb = env.reset(rgb=True)
+            observations.append(obs)
         observation = buffer_from_example(observations[0], len(self.envs))
+        rgb = buffer_from_example(rgb, len(self.envs))
         action = buffer_from_example(self.envs[0].action_space.sample(null=True),
             len(self.envs))
         reward = np.zeros(len(self.envs), dtype="float32")
-        obs_pyt, act_pyt, rew_pyt = torchify_buffer((observation, action, reward))
+        obs_pyt, act_pyt, rew_pyt, rgb_pyt = torchify_buffer((observation, action, reward, rgb))
         self.agent.reset()
         for t in range(self.max_T):
-            act_pyt, agent_info = self.agent.step(obs_pyt, act_pyt, rew_pyt)
+            act_pyt, agent_info = self.agent.step(obs_pyt, act_pyt, rew_pyt, rgb_pyt)
             action = numpify_buffer(act_pyt)
             for b, env in enumerate(self.envs):
                 o, r, d, env_info = env.step(action[b], agent_info, info_idx=b)

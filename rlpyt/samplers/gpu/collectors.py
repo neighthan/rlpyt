@@ -1,4 +1,4 @@
-
+from gzip import GzipFile
 import numpy as np
 
 from rlpyt.samplers.base import BaseEvalCollector
@@ -96,8 +96,7 @@ class WaitResetCollector(DecorrelatingStartCollector):
                 step.observation[b] = o
                 step.reward[b] = r
                 step.done[b] = d
-                if True:
-                    step.rgb[b] = rgb
+                step.rgb[b] = rgb
                 if env_info:
                     env_buf.env_info[t, b] = env_info
             agent_buf.action[t] = step.action  # OPTIONAL BY SERVER
@@ -122,6 +121,9 @@ class WaitResetCollector(DecorrelatingStartCollector):
 
 
 class EvalCollector(BaseEvalCollector):
+    def __init__(self, *args, safe: bool=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.safe = safe
 
     def collect_evaluation(self, itr):
         """Param itr unused."""
@@ -129,9 +131,20 @@ class EvalCollector(BaseEvalCollector):
         act_waiter, step_blocker = self.sync.act_waiter, self.sync.step_blocker
         step = self.step_buffer_np
         for b, env in enumerate(self.envs):
-            step.observation[b] = env.reset()
+            if self.safe:
+                obs, rgb = env.reset(rgb=True)
+                step.rgb[b] = rgb
+            else:
+                obs = env.reset(rgb=False)
+            step.observation[b] = obs
         step.done[:] = False
         step_blocker.release()
+
+        # record unsafe episodes
+        # all_obs = []
+        # all_rgb = []
+        # all_act = []
+        # n_save = 100
 
         for t in range(self.max_T):
             act_waiter.acquire()
@@ -139,14 +152,31 @@ class EvalCollector(BaseEvalCollector):
                 step_blocker.release()  # Always release at end of loop.
                 break
             for b, env in enumerate(self.envs):
-                o, r, d, env_info = env.step(step.action[b], agent_info=step.agent_info, info_idx=b)
+                # all_obs.append(step.observation[b].copy())
+                # all_act.append(step.action[b].copy())
+                # all_rgb.append(step.rgb[b].copy())
+                if self.safe:
+                    (o, r, d, env_info), rgb = env.step(step.action[b], agent_info=step.agent_info, info_idx=b, rgb=self.safe)
+                else:
+                    o, r, d, env_info = env.step(step.action[b], agent_info=step.agent_info, info_idx=b, rgb=self.safe)
                 traj_infos[b].step(step.observation[b], step.action[b], r, d,
                     step.agent_info[b], env_info)
                 if getattr(env_info, "traj_done", d):
                     self.traj_infos_queue.put(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
-                    o = env.reset()
+                    if self.safe:
+                        o, rgb = env.reset(rgb=True)
+                    else:
+                        o = env.reset(rgb=False)
+                # if not env_info.action_safe:
+                #     k = np.random.randint(250)
+                #     with GzipFile(f"rgb_{k}.npy.gz", "w") as f:
+                #         np.save(f, np.stack(all_rgb[-n_save:]))
+                #     with GzipFile(f"act_{k}.npy.gz", "w") as f:
+                #         np.save(f, np.stack(all_act[-n_save:]))
                 step.observation[b] = o
                 step.reward[b] = r
                 step.done[b] = d
+                if self.safe:
+                    step.rgb[b] = rgb
             step_blocker.release()
