@@ -17,6 +17,9 @@ EVAL_TRAJ_CHECK = 20  # Time steps.
 
 
 class GpuParallelSampler(BaseSampler):
+    def __init__(self, *args, safe: bool = True, **kwargs):
+        self.safe = safe
+        super().__init__(*args, **kwargs)
 
     def initialize(self, agent, affinity, seed,
             bootstrap_value=False, traj_info_kwargs=None):
@@ -145,7 +148,7 @@ class GpuParallelSampler(BaseSampler):
                     step_np.action[b_reset] = 0  # Null prev_action into agent.
                     step_np.reward[b_reset] = 0  # Null prev_reward into agent.
                     self.agent.reset_one(idx=b_reset)
-            action, agent_info = self.agent.step(*agent_inputs)
+            action, agent_info = self.agent.step(*agent_inputs, safe=self.safe)
             step_np.action[:] = action  # Worker applies to env.
             step_np.agent_info[:] = agent_info  # Worker sends to traj_info.
             for w in act_waiters:
@@ -181,7 +184,7 @@ class GpuParallelSampler(BaseSampler):
                 step_np.action[b_reset] = 0  # Null prev_action.
                 step_np.reward[b_reset] = 0  # Null prev_reward.
                 self.agent.reset_one(idx=b_reset)
-            action, agent_info = self.agent.step(*agent_inputs)
+            action, agent_info = self.agent.step(*agent_inputs, safe=self.safe)
             step_np.action[:] = action
             step_np.agent_info[:] = agent_info
             if self.eval_max_trajectories is not None and t % EVAL_TRAJ_CHECK == 0:

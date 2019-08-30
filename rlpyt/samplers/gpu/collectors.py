@@ -119,6 +119,9 @@ class WaitResetCollector(DecorrelatingStartCollector):
 
 
 class EvalCollector(BaseEvalCollector):
+    def __init__(self, *args, safe: bool = False, **kwargs):
+        self.safe = safe
+        super().__init__(*args, **kwargs)
 
     def collect_evaluation(self, itr):
         """Param itr unused."""

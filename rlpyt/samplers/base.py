@@ -22,6 +22,7 @@ class BaseSampler:
             eval_max_steps: Optional[int] = None,
             eval_max_trajectories: Optional[int] = None,  # Optional earlier cutoff.
             eval_min_envs_reset: int = 1,
+            safe: bool = False,
             ):
         """
         :param eval_n_envs: 0 for no eval setup.

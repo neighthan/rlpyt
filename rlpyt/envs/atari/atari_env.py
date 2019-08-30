@@ -104,7 +104,7 @@ class AtariEnv(Env):
 
 
         level2 = (self._raw_frame_2[10, 10] == 0).all()
-        lost_life = self.ale.lives() < self._lives
+        lost_life = self.ale.lives() < 3  # self._lives
         reward = np.sign(game_score) if self._clip_reward else game_score
         game_over = self.ale.game_over() or self._step_counter >= self.horizon
         done = lost_life or level2 or game_over

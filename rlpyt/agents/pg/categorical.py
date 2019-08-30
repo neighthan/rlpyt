@@ -26,14 +26,14 @@ class CategoricalPgAgent(BasePgAgent):
         self.distribution = Categorical(dim=env_spaces.action.n)
 
     @torch.no_grad()
-    def step(self, observation, prev_action, prev_reward):
+    def step(self, observation, prev_action, prev_reward, safe: bool = True):
         prev_action = self.distribution.to_onehot(prev_action)
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
         pi, value = self.model(*model_inputs)
         # TODO - should I actually renormalize pi or just sample `action` from a
         # renormalized version and leave pi as-is?
-        if self.checker:
+        if self.checker and safe:
             pi, constraint_used = self.renormalize_safely(observation, pi)
         else:
             constraint_used = torch.zeros_like(value)
@@ -48,13 +48,17 @@ class CategoricalPgAgent(BasePgAgent):
         if observation.ndimension() != 4:
             squeeze_pi = True
             observation = observation.unsqueeze(0)
+            pi = pi.unsqueeze(0)
 
         safe_action_masks = self.checker.get_safe_actions(observation).to(pi.device)
+        # TODO - do .any and .where here work as desired? Haven't tested
+        safe_action_exists = safe_action_masks.any(-1, keepdim=True).expand(-1, pi.shape[1])
         # pi[~safe_action_masks] = 0
-        pi = pi * safe_action_masks.float()
+        pi = torch.where(safe_action_exists, pi * safe_action_masks.float(), pi)
         pi_sum = pi.sum(-1, keepdim=True)
         constraint_used = 1 - pi_sum.squeeze()
         pi = pi / pi_sum
+
         if squeeze_pi:
             pi = pi.squeeze(0)
         return pi, constraint_used
